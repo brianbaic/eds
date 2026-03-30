@@ -188,6 +188,9 @@ body::after {
   background: rgba(25, 40, 69, 0.78);
   padding: 9px;
   cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
 }
 
@@ -300,6 +303,11 @@ body::after {
 body.is-dragging-file .drop-zone {
   border-color: rgba(135, 167, 255, 0.7);
   box-shadow: 0 0 0 2px rgba(135, 167, 255, 0.18), inset 0 0 24px rgba(61, 108, 230, 0.12);
+}
+
+body.is-dragging-file {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .drop-zone.flash {
@@ -720,6 +728,7 @@ let availableTemplates = new Set();
 let currentDragCard = null;
 let dragCommitted = false;
 let virtualDragState = null;
+let activeDragPointerId = null;
 
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -1108,13 +1117,17 @@ function bindVirtualFileEvents() {
     const templateName = card.getAttribute('data-template');
 
     card.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      if (virtualDragState) return;
       if (activeLoadedFile) {
         showError('Only one file can be loaded at a time. Reset canvas before loading another.');
         return;
       }
 
       event.preventDefault();
+      if (card.setPointerCapture && Number.isInteger(event.pointerId)) {
+        try { card.setPointerCapture(event.pointerId); } catch (_) {}
+      }
       startVirtualPointerDrag(event, card, templateName);
     });
 
@@ -1141,6 +1154,7 @@ function startVirtualPointerDrag(event, card, templateName) {
 
   currentDragCard = card;
   dragCommitted = false;
+  activeDragPointerId = event.pointerId;
   card.classList.add('dragging');
   document.body.classList.add('is-dragging-file');
 
@@ -1152,12 +1166,15 @@ function startVirtualPointerDrag(event, card, templateName) {
   virtualDragState = {
     templateName,
     card,
-    ghost
+    ghost,
+    pointerId: event.pointerId
   };
 
   updatePointerDragPosition(event.clientX, event.clientY);
-  window.addEventListener('pointermove', onVirtualPointerMove);
+  window.addEventListener('pointermove', onVirtualPointerMove, { passive: false });
   window.addEventListener('pointerup', onVirtualPointerUp);
+  window.addEventListener('pointercancel', onVirtualPointerCancel);
+  window.addEventListener('blur', onWindowBlurCancel);
 }
 
 function updatePointerDragPosition(x, y) {
@@ -1172,15 +1189,34 @@ function updatePointerDragPosition(x, y) {
 
 function onVirtualPointerMove(event) {
   if (!virtualDragState) return;
+  if (Number.isInteger(virtualDragState.pointerId) && event.pointerId !== virtualDragState.pointerId) return;
+  if (event.pointerType !== 'mouse') event.preventDefault();
   updatePointerDragPosition(event.clientX, event.clientY);
 }
 
 function onVirtualPointerUp(event) {
   if (!virtualDragState) return;
+  if (Number.isInteger(virtualDragState.pointerId) && event.pointerId !== virtualDragState.pointerId) return;
+  finalizeVirtualDrag(event.clientX, event.clientY, true);
+}
+
+function onVirtualPointerCancel(event) {
+  if (!virtualDragState) return;
+  if (Number.isInteger(virtualDragState.pointerId) && event.pointerId !== virtualDragState.pointerId) return;
+  finalizeVirtualDrag(event.clientX, event.clientY, false);
+}
+
+function onWindowBlurCancel() {
+  if (!virtualDragState) return;
+  finalizeVirtualDrag(-1, -1, false);
+}
+
+function finalizeVirtualDrag(x, y, allowDrop) {
+  if (!virtualDragState) return;
 
   const { templateName, card, ghost } = virtualDragState;
   const rect = dropZone.getBoundingClientRect();
-  const isOverDrop = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  const isOverDrop = allowDrop && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 
   if (isOverDrop && !activeLoadedFile) {
     dragCommitted = true;
@@ -1188,15 +1224,21 @@ function onVirtualPointerUp(event) {
   }
 
   card.classList.remove('dragging');
+  if (card.releasePointerCapture && Number.isInteger(activeDragPointerId)) {
+    try { card.releasePointerCapture(activeDragPointerId); } catch (_) {}
+  }
   document.body.classList.remove('is-dragging-file');
   dropZone.classList.remove('drag-over');
   ghost.remove();
 
   virtualDragState = null;
+  activeDragPointerId = null;
   currentDragCard = null;
   dragCommitted = false;
   window.removeEventListener('pointermove', onVirtualPointerMove);
   window.removeEventListener('pointerup', onVirtualPointerUp);
+  window.removeEventListener('pointercancel', onVirtualPointerCancel);
+  window.removeEventListener('blur', onWindowBlurCancel);
 }
 
 function showError(message) {
