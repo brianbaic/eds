@@ -1,0 +1,23 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+.vite-cache/
+.vercel/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+session-secret*
+
+# Logs and OS/editor noise
+*.log
+.DS_Store
+Thumbs.db
+
+# Private project artifacts
+_private/
+.claude/

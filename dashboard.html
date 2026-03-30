@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+<title>Data Canvas Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+:root {
+  --bg: #0d1321;
+  --bg-soft: #171f32;
+  --panel: #0f1a2c;
+  --panel-2: #15253f;
+  --glass: rgba(33, 49, 79, 0.56);
+  --line: rgba(133, 156, 201, 0.28);
+  --ink: #eaf0ff;
+  --muted: #9db0d6;
+  --mint: #00b894;
+  --sand: #ffb86b;
+  --sky: #53a7ff;
+  --rose: #ff7f88;
+  --focus: #87a7ff;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 620px at -10% -20%, #1a2550 0%, transparent 60%),
+    radial-gradient(820px 560px at 105% -8%, #163851 0%, transparent 58%),
+    radial-gradient(820px 560px at 50% 120%, #2c184f 0%, transparent 58%),
+    linear-gradient(180deg, #0b1220, #0c1323 52%, #0b101d 100%);
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(28px);
+}
+
+body::before {
+  width: 260px;
+  height: 260px;
+  right: 8%;
+  top: 8%;
+  background: rgba(0, 184, 148, 0.23);
+  animation: floatA 12s ease-in-out infinite;
+}
+
+body::after {
+  width: 320px;
+  height: 320px;
+  left: 7%;
+  bottom: 4%;
+  background: rgba(83, 167, 255, 0.2);
+  animation: floatB 16s ease-in-out infinite;
+}
+
+@keyframes floatA {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(12px) translateX(-16px); }
+}
+
+@keyframes floatB {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-10px) translateX(14px); }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  width: min(1560px, 96vw);
+  margin: 18px auto 32px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 360px 1fr;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(25, 39, 67, 0.78), rgba(12, 20, 36, 0.9));
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(8px);
+}
+
+.hero {
+  grid-column: 1 / -1;
+  padding: 20px 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, rgba(83, 167, 255, 0.16), rgba(0, 184, 148, 0.12) 40%, rgba(255, 184, 107, 0.12) 80%);
+  pointer-events: none;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(1.3rem, 2.4vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 66ch;
+}
+
+.pill {
+  border: 1px solid rgba(141, 171, 228, 0.34);
+  background: rgba(14, 23, 40, 0.65);
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: #bed0f2;
+  white-space: nowrap;
+}
+
+
+.left {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  align-self: start;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.manager-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.left h2,
+.workspace h2 {
+  margin: 0;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.folder {
+  border: 1px solid rgba(121, 151, 211, 0.2);
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(16, 30, 54, 0.94), rgba(16, 24, 42, 0.88));
+  padding: 10px;
+}
+
+.folder-name {
+  font-weight: 700;
+  color: #c6d6ff;
+  margin-bottom: 8px;
+  font-size: 0.86rem;
+}
+
+.file {
+  border: 1px solid rgba(133, 167, 225, 0.24);
+  border-radius: 10px;
+  background: rgba(25, 40, 69, 0.78);
+  padding: 9px;
+  cursor: grab;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
+}
+
+.file + .file { margin-top: 8px; }
+
+.file:hover {
+  transform: translateY(-2px);
+  border-color: rgba(172, 199, 255, 0.56);
+  box-shadow: 0 12px 20px rgba(29, 47, 83, 0.42);
+}
+
+.file:active { cursor: grabbing; }
+
+.file.dragging {
+  opacity: 0.08;
+  transform: translateX(6px) scale(0.98);
+  border-color: rgba(172, 199, 255, 0.75);
+  pointer-events: none;
+}
+
+.drag-proxy {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  padding: 8px 10px;
+  border: 1px solid rgba(172, 199, 255, 0.78);
+  border-radius: 9px;
+  background: rgba(17, 32, 57, 0.96);
+  color: #d9e7ff;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  box-shadow: 0 8px 18px rgba(13, 25, 46, 0.45);
+  transform: translate(10px, 12px);
+}
+
+.file-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.file-meta {
+  margin-top: 4px;
+  color: #9db1d9;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.workspace {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.drop-zone {
+  border: 2px dashed rgba(150, 179, 240, 0.44);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(20, 34, 59, 0.88), rgba(18, 29, 51, 0.62));
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 14px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+  position: relative;
+}
+
+.drop-slot {
+  margin-top: 10px;
+  width: min(520px, 100%);
+  border: 1px solid rgba(141, 170, 225, 0.32);
+  border-radius: 10px;
+  background: rgba(16, 28, 50, 0.74);
+  color: #bdd1fb;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.78rem;
+}
+
+.drop-slot.empty-slot {
+  color: #8ea6d4;
+  border-style: dashed;
+}
+
+.slot-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slot-file-name {
+  font-weight: 700;
+}
+
+.slot-file-meta {
+  color: #9cb3df;
+  font-size: 0.72rem;
+}
+
+.drop-zone.drag-over {
+  border-color: var(--focus);
+  transform: translateY(-2px) scale(1.006);
+  box-shadow: 0 0 0 2px rgba(135, 167, 255, 0.2), 0 18px 28px rgba(14, 30, 61, 0.45);
+}
+
+body.is-dragging-file .drop-zone {
+  border-color: rgba(135, 167, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(135, 167, 255, 0.18), inset 0 0 24px rgba(61, 108, 230, 0.12);
+}
+
+.drop-zone.flash {
+  animation: dropFlash 460ms ease;
+}
+
+@keyframes dropFlash {
+  0% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.45); }
+  40% { box-shadow: 0 0 0 7px rgba(0, 184, 148, 0.24); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+}
+
+.drop-zone h3 {
+  margin: 0;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.02rem;
+}
+
+.drop-zone p {
+  margin: 8px 0 10px;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 13px;
+  color: #e9f0ff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-main {
+  background: linear-gradient(120deg, #2f54ff, #4b78ff);
+}
+
+.btn-ghost {
+  background: rgba(151, 177, 230, 0.16);
+  border: 1px solid rgba(151, 177, 230, 0.3);
+}
+
+#error-message {
+  display: none;
+  background: rgba(255, 127, 136, 0.12);
+  border: 1px solid rgba(255, 127, 136, 0.46);
+  color: #ffc5ca;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.meta-item {
+  border: 1px solid rgba(146, 174, 231, 0.25);
+  background: linear-gradient(160deg, rgba(19, 32, 56, 0.9), rgba(15, 23, 40, 0.9));
+  border-radius: 11px;
+  padding: 9px 10px;
+}
+
+.meta-label {
+  color: #93a9d6;
+  font-size: 0.72rem;
+}
+
+.meta-value {
+  margin-top: 2px;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.92rem;
+}
+
+.control-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.control-row label {
+  color: #abc0ea;
+  font-size: 0.82rem;
+}
+
+.control-row select,
+.control-row input {
+  border: 1px solid rgba(147, 175, 230, 0.34);
+  background: rgba(13, 24, 43, 0.88);
+  color: #eaf0ff;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+}
+
+.control-row input { width: min(320px, 100%); }
+
+.control-row .spacer {
+  flex: 1;
+}
+
+.action-mini {
+  font-size: 0.75rem;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(151, 177, 230, 0.16);
+  border: 1px solid rgba(151, 177, 230, 0.35);
+}
+
+.command-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.command-item {
+  border: 1px solid rgba(146, 174, 231, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(19, 32, 56, 0.76), rgba(13, 22, 40, 0.78));
+  padding: 8px;
+}
+
+.command-title {
+  color: #90a8d9;
+  font-size: 0.68rem;
+}
+
+.command-value {
+  margin-top: 2px;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.85rem;
+}
+
+.layout {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(310px, 1.1fr) minmax(350px, 1.3fr);
+}
+
+.subcard {
+  border: 1px solid rgba(141, 170, 225, 0.28);
+  border-radius: 13px;
+  background: rgba(12, 21, 37, 0.72);
+  padding: 10px;
+}
+
+.subhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.subhead h3 {
+  margin: 0;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.9rem;
+}
+
+.subhead span {
+  color: #9db2da;
+  font-size: 0.76rem;
+}
+
+.field-list {
+  display: grid;
+  gap: 7px;
+  max-height: 290px;
+  overflow: auto;
+}
+
+.field {
+  border: 1px solid rgba(141, 170, 225, 0.2);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(19, 33, 57, 0.75);
+}
+
+.field-title {
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.field-meta {
+  margin-top: 5px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  color: #9cb3e0;
+  font-size: 0.72rem;
+}
+
+.chart-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1.6fr 1fr;
+  grid-template-areas:
+    'primary primary'
+    'secondary tertiary';
+}
+
+.chart {
+  border: 1px solid rgba(141, 170, 225, 0.26);
+  border-radius: 12px;
+  min-height: 320px;
+  background: rgba(10, 17, 31, 0.8);
+}
+
+#chart-primary { grid-area: primary; min-height: 390px; }
+#chart-secondary { grid-area: secondary; }
+#chart-tertiary { grid-area: tertiary; }
+
+.table-wrap {
+  margin-top: 2px;
+  border: 1px solid rgba(141, 170, 225, 0.26);
+  border-radius: 12px;
+  background: rgba(9, 16, 28, 0.82);
+  max-height: 300px;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(126, 151, 201, 0.17);
+  border-right: 1px solid rgba(126, 151, 201, 0.14);
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(20, 32, 57, 0.96);
+  color: #bdd1fb;
+}
+
+.empty {
+  padding: 12px;
+  color: #9db2da;
+}
+
+.reveal {
+  animation: reveal 0.5s ease both;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1180px) {
+  .app { grid-template-columns: 1fr; }
+  .meta-grid { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .chart-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'primary'
+      'secondary'
+      'tertiary';
+  }
+  .meta-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .command-strip { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .hero { flex-direction: column; align-items: flex-start; }
+  .meta-grid { grid-template-columns: 1fr; }
+}
+
+a.inline-link {
+  color: #b9d5ff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(185, 213, 255, 0.45);
+}
+
+a.inline-link:hover {
+  color: #d6e8ff;
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="card hero reveal">
+    <div>
+      <h1>Spreadsheet Demo Playbook</h1>
+      <p>Demo flow: drag one report from the virtual file manager into the upload area, explore charts and table output, then reset to load the next report. Use the Demo selector to switch between general canvas preview and individual performance preview.</p>
+    </div>
+    <div class="pill">Demo Readme Mode</div>
+  </section>
+
+  <aside class="card left reveal" style="animation-delay:0.06s">
+    <h2>Virtual File Manager</h2>
+    <p class="hint">Drag a file card into the canvas upload area to move and load it.</p>
+
+    <div id="virtual-file-manager" class="manager-stack"></div>
+  </aside>
+
+  <section class="card workspace reveal" style="animation-delay:0.12s">
+    <h2>Live Data Canvas</h2>
+    <div id="error-message"></div>
+
+    <div class="drop-zone" id="drop-zone">
+      <div>
+        <h3>Drop Spreadsheet Here</h3>
+        <p>Supports .xlsx and .xlsm from virtual files or local upload.</p>
+        <div class="actions">
+          <button class="btn-main" id="browse-btn" type="button">Browse Local File</button>
+          <button class="btn-ghost" id="reset-btn" type="button">Reset Canvas</button>
+        </div>
+      </div>
+      <div id="drop-slot" class="drop-slot empty-slot">Drop target: no virtual file moved yet.</div>
+      <input type="file" id="file-input" accept=".xlsx,.xlsm" hidden>
+    </div>
+
+    <div class="meta-grid" id="meta-grid">
+      <div class="meta-item"><div class="meta-label">Workbook</div><div class="meta-value" id="stat-workbook">-</div></div>
+      <div class="meta-item"><div class="meta-label">Sheets</div><div class="meta-value" id="stat-sheets">-</div></div>
+      <div class="meta-item"><div class="meta-label">Rows (Shown)</div><div class="meta-value" id="stat-rows">-</div></div>
+      <div class="meta-item"><div class="meta-label">Columns</div><div class="meta-value" id="stat-columns">-</div></div>
+      <div class="meta-item"><div class="meta-label">Numeric Fields</div><div class="meta-value" id="stat-numeric">-</div></div>
+    </div>
+
+    <div class="command-strip" id="mini-panel">
+      <div class="command-item"><div class="command-title">Primary Field Avg</div><div class="command-value" id="insight-avg">-</div></div>
+      <div class="command-item"><div class="command-title">Primary Field Peak</div><div class="command-value" id="insight-max">-</div></div>
+      <div class="command-item"><div class="command-title">Unique Categories</div><div class="command-value" id="insight-unique">-</div></div>
+      <div class="command-item"><div class="command-title">Rows Matching Search</div><div class="command-value" id="insight-filter">-</div></div>
+    </div>
+
+    <div class="control-row">
+      <label for="demo-view">Demo</label>
+      <select id="demo-view">
+        <option value="canvas">Canvas</option>
+        <option value="individual">Individual Performance</option>
+      </select>
+      <label for="sheet-select">Sheet</label>
+      <select id="sheet-select"></select>
+      <label for="search-input">Search</label>
+      <input id="search-input" type="text" placeholder="Filter visible rows by text">
+      <label for="x-column">X</label>
+      <select id="x-column"></select>
+      <label for="y1-column">Y1</label>
+      <select id="y1-column"></select>
+      <label for="y2-column">Y2</label>
+      <select id="y2-column"></select>
+      <label for="chart-a-type">A</label>
+      <select id="chart-a-type">
+        <option value="bar">Bar</option>
+        <option value="line">Line</option>
+        <option value="area">Area</option>
+        <option value="scatter">Scatter</option>
+      </select>
+      <label for="chart-b-type">B</label>
+      <select id="chart-b-type">
+        <option value="line">Line</option>
+        <option value="bar">Bar</option>
+        <option value="box">Box</option>
+        <option value="histogram">Histogram</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="action-mini" id="export-chart-btn" type="button">Download Chart PNG</button>
+      <button class="action-mini" id="export-csv-btn" type="button">Download Visible CSV</button>
+    </div>
+
+    <div class="layout">
+      <section class="subcard">
+        <div class="subhead"><h3>Field Profiler</h3><span>Detected numeric columns</span></div>
+        <div id="field-list" class="field-list"></div>
+      </section>
+
+      <section class="subcard">
+        <div class="subhead"><h3>Visual Layer</h3><span>Dual chart preview</span></div>
+        <div class="chart-grid">
+          <div id="chart-primary" class="chart"></div>
+          <div id="chart-secondary" class="chart"></div>
+          <div id="chart-tertiary" class="chart"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="subcard">
+      <div class="subhead"><h3>Table Explorer</h3><span id="table-caption">Awaiting data</span></div>
+      <div class="table-wrap" id="table-wrap"><div class="empty">No workbook loaded.</div></div>
+    </section>
+  </section>
+</main>
+
+<script>
+const MAX_ROWS = 220;
+let workbookState = null;
+let currentRows = [];
+let currentHeaders = [];
+let currentNumericCols = [];
+let currentFilteredRows = [];
+let currentDemoView = 'canvas';
+let activeLoadedFile = null;
+let availableTemplates = new Set();
+let currentDragCard = null;
+let dragCommitted = false;
+let virtualDragState = null;
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const browseBtn = document.getElementById('browse-btn');
+const resetBtn = document.getElementById('reset-btn');
+const sheetSelect = document.getElementById('sheet-select');
+const searchInput = document.getElementById('search-input');
+const tableWrap = document.getElementById('table-wrap');
+const fieldList = document.getElementById('field-list');
+const tableCaption = document.getElementById('table-caption');
+const errorMessage = document.getElementById('error-message');
+const dropSlot = document.getElementById('drop-slot');
+const virtualFileManager = document.getElementById('virtual-file-manager');
+
+const demoViewSelect = document.getElementById('demo-view');
+const xColumnSelect = document.getElementById('x-column');
+const y1ColumnSelect = document.getElementById('y1-column');
+const y2ColumnSelect = document.getElementById('y2-column');
+const chartAType = document.getElementById('chart-a-type');
+const chartBType = document.getElementById('chart-b-type');
+const exportChartBtn = document.getElementById('export-chart-btn');
+const exportCsvBtn = document.getElementById('export-csv-btn');
+
+const statWorkbook = document.getElementById('stat-workbook');
+const statSheets = document.getElementById('stat-sheets');
+const statRows = document.getElementById('stat-rows');
+const statColumns = document.getElementById('stat-columns');
+const statNumeric = document.getElementById('stat-numeric');
+const insightAvg = document.getElementById('insight-avg');
+const insightMax = document.getElementById('insight-max');
+const insightUnique = document.getElementById('insight-unique');
+const insightFilter = document.getElementById('insight-filter');
+
+const chartPrimaryId = 'chart-primary';
+const chartSecondaryId = 'chart-secondary';
+const chartTertiaryId = 'chart-tertiary';
+
+const VIRTUAL_FILE_DEFS = [
+  { folder: '/Operations', template: 'traffic', name: 'regional_traffic_model.xlsx', meta: '3 sheets | 54 rows | mixed types' },
+  { folder: '/Operations', template: 'capacity', name: 'capacity_scenarios.xlsx', meta: '2 sheets | 42 rows | scenario data' },
+  { folder: '/Learning', template: 'training', name: 'learning_progression.xlsx', meta: '2 sheets | 36 rows | completion timeline' },
+  { folder: '/Learning', template: 'quality', name: 'quality_observations.xlsx', meta: '1 sheet | 30 rows | categorical + numeric' },
+  { folder: '/People', template: 'individual', name: 'individual_performance_demo.xlsx', meta: '1 sheet | 12 rows | rich person-level signals' },
+  { folder: '/Finance', template: 'budget_variance', name: 'monthly_budget_variance.xlsx', meta: '1 sheet | 36 rows | dept budget vs actual' },
+  { folder: '/Finance', template: 'spend_vs_plan', name: 'spend_vs_plan_by_region.xlsx', meta: '1 sheet | 32 rows | regional spend tracking' },
+  { folder: '/Finance', template: 'operating_margin', name: 'operating_margin_trend.xlsx', meta: '1 sheet | 24 rows | quarterly margin trend' },
+  { folder: '/Customer Experience', template: 'sentiment_feedback', name: 'sentiment_and_feedback_mix.xlsx', meta: '1 sheet | 40 rows | channel sentiment scores' },
+  { folder: '/Customer Experience', template: 'case_resolution', name: 'case_resolution_journey.xlsx', meta: '1 sheet | 35 rows | case lifecycle data' },
+  { folder: '/Customer Experience', template: 'channel_response', name: 'channel_response_time_benchmark.xlsx', meta: '1 sheet | 28 rows | response vs benchmark' }
+];
+
+const templates = {
+  traffic: () => ({
+    Overview: createTrafficRows(54),
+    Mix: createMixRows(30),
+    Notes: [{ Comment: 'Demo workbook' }, { Comment: 'Generated in browser' }]
+  }),
+  capacity: () => ({
+    Capacity: createCapacityRows(42),
+    Scenarios: createScenarioRows(26)
+  }),
+  training: () => ({
+    Progression: createTrainingRows(36),
+    Sessions: createSessionRows(18)
+  }),
+  quality: () => ({
+    Observations: createQualityRows(30)
+  }),
+  individual: () => ({
+    Individuals: createIndividualRows(12)
+  }),
+  budget_variance: () => ({
+    BudgetVariance: createBudgetVarianceRows(36)
+  }),
+  spend_vs_plan: () => ({
+    SpendVsPlan: createSpendVsPlanRows(32)
+  }),
+  operating_margin: () => ({
+    OperatingMargin: createOperatingMarginRows(24)
+  }),
+  sentiment_feedback: () => ({
+    SentimentFeedback: createSentimentFeedbackRows(40)
+  }),
+  case_resolution: () => ({
+    CaseResolution: createCaseResolutionRows(35)
+  }),
+  channel_response: () => ({
+    ChannelResponse: createChannelResponseRows(28)
+  })
+};
+
+function createTrafficRows(count) {
+  const regions = ['North', 'South', 'East', 'West'];
+  const channels = ['Walk-In', 'Virtual', 'Phone'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const volume = 90 + (i * 9) % 130;
+    const requests = 34 + (i * 5) % 80;
+    rows.push({
+      Date: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`,
+      Region: regions[i % regions.length],
+      Channel: channels[i % channels.length],
+      Volume: volume,
+      Requests: requests,
+      Ratio: Number((requests / volume).toFixed(3))
+    });
+  }
+  return rows;
+}
+
+function createMixRows(count) {
+  const items = ['Plan A', 'Plan B', 'Plan C', 'Plan D'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    rows.push({
+      Week: `W${String(i).padStart(2, '0')}`,
+      Segment: items[i % items.length],
+      Cases: 20 + (i * 3) % 40,
+      CompletionHours: Number((2 + ((i * 0.31) % 3.8)).toFixed(2)),
+      Confidence: Number((0.65 + ((i * 0.03) % 0.28)).toFixed(3))
+    });
+  }
+  return rows;
+}
+
+function createCapacityRows(count) {
+  const zones = ['A', 'B', 'C', 'D'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    rows.push({
+      Day: i,
+      Zone: zones[i % zones.length],
+      PlannedSlots: 40 + (i % 7) * 3,
+      UsedSlots: 24 + (i * 4) % 28,
+      Spillover: (i * 2) % 10,
+      FillRate: Number(((24 + (i * 4) % 28) / (40 + (i % 7) * 3)).toFixed(3))
+    });
+  }
+  return rows;
+}
+
+function createScenarioRows(count) {
+  const scenario = ['Conservative', 'Balanced', 'Aggressive'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    rows.push({
+      Scenario: scenario[i % scenario.length],
+      Run: i,
+      WorkUnits: 120 + (i * 11) % 95,
+      Throughput: 30 + (i * 6) % 40,
+      Stability: Number((0.7 + ((i * 0.021) % 0.2)).toFixed(3))
+    });
+  }
+  return rows;
+}
+
+function createTrainingRows(count) {
+  const track = ['Onboarding', 'Systems', 'Quality', 'Communication'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const assigned = 8 + (i % 10);
+    const done = 4 + (i % 9);
+    rows.push({
+      Team: `Group-${(i % 6) + 1}`,
+      Track: track[i % track.length],
+      Assigned: assigned,
+      Completed: Math.min(done, assigned),
+      CompletionRatio: Number((Math.min(done, assigned) / assigned).toFixed(3))
+    });
+  }
+  return rows;
+}
+
+function createSessionRows(count) {
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    rows.push({
+      Session: `S-${String(i).padStart(2, '0')}`,
+      Participants: 6 + (i % 11),
+      DurationHours: Number((1.2 + ((i * 0.23) % 2.4)).toFixed(2)),
+      FollowUps: (i * 3) % 7
+    });
+  }
+  return rows;
+}
+
+function createQualityRows(count) {
+  const tags = ['Clarity', 'Consistency', 'Pacing', 'Accuracy'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    rows.push({
+      Item: `Entry-${String(i).padStart(2, '0')}`,
+      Category: tags[i % tags.length],
+      Score: 55 + (i * 7) % 44,
+      ReviewHours: Number((0.9 + ((i * 0.33) % 2.8)).toFixed(2)),
+      Priority: ['Low', 'Medium', 'High'][i % 3]
+    });
+  }
+  return rows;
+}
+
+function createIndividualRows(count) {
+  const roles = ['Specialist', 'Lead', 'Coordinator'];
+  const regions = ['North', 'South', 'East', 'West'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const efficiency = 72 + (i * 3) % 24;
+    const quality = 76 + (i * 4) % 22;
+    const throughput = 70 + (i * 5) % 26;
+    const collaboration = 74 + (i * 6) % 23;
+    const initiative = 71 + (i * 7) % 25;
+    const accuracyPct = Number((92 + ((i * 0.47) % 6)).toFixed(1));
+    const cycleTimeHours = Number((1.8 + ((i * 0.23) % 1.8)).toFixed(2));
+
+    rows.push({
+      agent: `Analyst ${String(i).padStart(2, '0')}`,
+      role: roles[i % roles.length],
+      region: regions[i % regions.length],
+      efficiency,
+      quality,
+      throughput,
+      collaboration,
+      initiative,
+      accuracyPct,
+      cycleTimeHours,
+      volume: 118 + (i * 9) % 64,
+      trendW1: 64 + (i * 3) % 18,
+      trendW2: 66 + (i * 4) % 19,
+      trendW3: 69 + (i * 4) % 20,
+      trendW4: 72 + (i * 5) % 20,
+      trendW5: 75 + (i * 5) % 21,
+      trendW6: 78 + (i * 6) % 21
+    });
+  }
+  return rows;
+}
+
+function createBudgetVarianceRows(count) {
+  const departments = ['Sales', 'Operations', 'Marketing', 'Support', 'Engineering', 'Finance'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const budgeted = 80000 + (i * 4300) % 60000;
+    const actual = budgeted + ((i * 1700) % 14000) - 7000;
+    const variance = actual - budgeted;
+    rows.push({
+      Month: months[(i - 1) % 12],
+      Department: departments[i % departments.length],
+      Budgeted: budgeted,
+      Actual: Math.max(actual, 0),
+      Variance: variance,
+      VariancePct: Number((variance / budgeted * 100).toFixed(1))
+    });
+  }
+  return rows;
+}
+
+function createSpendVsPlanRows(count) {
+  const regions = ['North', 'South', 'East', 'West'];
+  const categories = ['Headcount', 'Technology', 'Facilities', 'Travel', 'Training', 'Supplies'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const planned = 25000 + (i * 3100) % 45000;
+    const spent = planned + ((i * 2100) % 10000) - 5000;
+    rows.push({
+      Region: regions[i % regions.length],
+      Category: categories[i % categories.length],
+      Planned: planned,
+      Spent: Math.max(spent, 0),
+      Delta: spent - planned,
+      PctSpent: Number((Math.max(spent, 0) / planned * 100).toFixed(1))
+    });
+  }
+  return rows;
+}
+
+function createOperatingMarginRows(count) {
+  const units = ['Retail', 'Services', 'Digital', 'Enterprise'];
+  const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const revenue = 500000 + (i * 21000) % 300000;
+    const cogs = Math.round(revenue * (0.45 + ((i * 0.017) % 0.12)));
+    const grossMargin = revenue - cogs;
+    const opex = Math.round(revenue * (0.22 + ((i * 0.013) % 0.09)));
+    const opMargin = grossMargin - opex;
+    rows.push({
+      Quarter: quarters[(i - 1) % 4],
+      BusinessUnit: units[i % units.length],
+      Revenue: revenue,
+      COGS: cogs,
+      GrossMargin: grossMargin,
+      OperatingExpenses: opex,
+      OperatingMarginPct: Number((opMargin / revenue * 100).toFixed(1))
+    });
+  }
+  return rows;
+}
+
+function createSentimentFeedbackRows(count) {
+  const channels = ['Chat', 'Email', 'Phone', 'In-Store', 'App'];
+  const sentiments = ['Positive', 'Neutral', 'Negative'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const total = 40 + (i * 7) % 80;
+    const positivePct = 48 + (i * 3) % 40;
+    rows.push({
+      Date: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`,
+      Channel: channels[i % channels.length],
+      Sentiment: sentiments[i % sentiments.length],
+      Score: Number((3.2 + ((i * 0.11) % 1.6)).toFixed(1)),
+      FeedbackCount: total,
+      PositivePct: positivePct
+    });
+  }
+  return rows;
+}
+
+function createCaseResolutionRows(count) {
+  const categories = ['Billing', 'Technical', 'Delivery', 'Returns', 'Account', 'General'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const days = 1 + (i * 3) % 14;
+    rows.push({
+      CaseID: `CASE-${String(1000 + i)}`,
+      Category: categories[i % categories.length],
+      OpenDate: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`,
+      CloseDate: `2026-03-${String(Math.min((i % 28) + 1 + days, 30)).padStart(2, '0')}`,
+      DaysToResolve: days,
+      Escalated: i % 5 === 0 ? 'Yes' : 'No',
+      SatisfactionScore: Number((3.0 + ((i * 0.13) % 1.9)).toFixed(1))
+    });
+  }
+  return rows;
+}
+
+function createChannelResponseRows(count) {
+  const channels = ['Chat', 'Email', 'Phone', 'App', 'Social'];
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    const benchmark = [2, 240, 5, 3, 60][i % 5];
+    const avg = benchmark + ((i * 7) % 30) - 12;
+    rows.push({
+      Channel: channels[i % channels.length],
+      Week: `W${String((i % 12) + 1).padStart(2, '0')}`,
+      AvgResponseMinutes: Math.max(avg, 1),
+      Benchmark: benchmark,
+      Delta: Math.max(avg, 1) - benchmark,
+      SLAMet: Math.max(avg, 1) <= benchmark ? 'Yes' : 'No'
+    });
+  }
+  return rows;
+}
+
+function renderVirtualFileManager() {
+  const groups = new Map();
+  VIRTUAL_FILE_DEFS.forEach((f) => {
+    if (!availableTemplates.has(f.template)) return;
+    if (!groups.has(f.folder)) groups.set(f.folder, []);
+    groups.get(f.folder).push(f);
+  });
+
+  if (!groups.size) {
+    virtualFileManager.innerHTML = '<div class="folder"><div class="file-meta">No virtual files available. Reset canvas to restore.</div></div>';
+    return;
+  }
+
+  let html = '';
+  groups.forEach((files, folder) => {
+    html += `<div class="folder"><div class="folder-name">${escapeHtml(folder)}</div>`;
+    files.forEach((f) => {
+      html += `<div class="file" draggable="false" data-template="${escapeHtml(f.template)}" role="button" tabindex="0">`;
+      html += `<div class="file-name">${escapeHtml(f.name)}</div>`;
+      html += `<div class="file-meta">${escapeHtml(f.meta)}</div>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  virtualFileManager.innerHTML = html;
+  bindVirtualFileEvents();
+}
+
+function bindVirtualFileEvents() {
+  virtualFileManager.querySelectorAll('.file').forEach((card) => {
+    const templateName = card.getAttribute('data-template');
+
+    card.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      if (activeLoadedFile) {
+        showError('Only one file can be loaded at a time. Reset canvas before loading another.');
+        return;
+      }
+
+      event.preventDefault();
+      startVirtualPointerDrag(event, card, templateName);
+    });
+
+    card.addEventListener('click', () => {
+      showError('Drag the virtual file into the "Drop Spreadsheet Here" area to load it.');
+      dropZone.classList.add('drag-over');
+      setTimeout(() => dropZone.classList.remove('drag-over'), 320);
+    });
+
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        showError('Use drag-and-drop to move this file into the upload card.');
+        dropZone.classList.add('drag-over');
+        setTimeout(() => dropZone.classList.remove('drag-over'), 320);
+      }
+    });
+  });
+}
+
+function startVirtualPointerDrag(event, card, templateName) {
+  const nameEl = card.querySelector('.file-name');
+  const label = nameEl ? nameEl.textContent : 'Virtual workbook';
+
+  currentDragCard = card;
+  dragCommitted = false;
+  card.classList.add('dragging');
+  document.body.classList.add('is-dragging-file');
+
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-proxy';
+  ghost.textContent = label;
+  document.body.appendChild(ghost);
+
+  virtualDragState = {
+    templateName,
+    card,
+    ghost
+  };
+
+  updatePointerDragPosition(event.clientX, event.clientY);
+  window.addEventListener('pointermove', onVirtualPointerMove);
+  window.addEventListener('pointerup', onVirtualPointerUp);
+}
+
+function updatePointerDragPosition(x, y) {
+  if (!virtualDragState) return;
+  virtualDragState.ghost.style.left = `${x}px`;
+  virtualDragState.ghost.style.top = `${y}px`;
+
+  const rect = dropZone.getBoundingClientRect();
+  const isOverDrop = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  dropZone.classList.toggle('drag-over', isOverDrop);
+}
+
+function onVirtualPointerMove(event) {
+  if (!virtualDragState) return;
+  updatePointerDragPosition(event.clientX, event.clientY);
+}
+
+function onVirtualPointerUp(event) {
+  if (!virtualDragState) return;
+
+  const { templateName, card, ghost } = virtualDragState;
+  const rect = dropZone.getBoundingClientRect();
+  const isOverDrop = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+
+  if (isOverDrop && !activeLoadedFile) {
+    dragCommitted = true;
+    loadVirtualTemplate(templateName);
+  }
+
+  card.classList.remove('dragging');
+  document.body.classList.remove('is-dragging-file');
+  dropZone.classList.remove('drag-over');
+  ghost.remove();
+
+  virtualDragState = null;
+  currentDragCard = null;
+  dragCommitted = false;
+  window.removeEventListener('pointermove', onVirtualPointerMove);
+  window.removeEventListener('pointerup', onVirtualPointerUp);
+}
+
+function showError(message) {
+  errorMessage.textContent = message;
+  errorMessage.style.display = 'block';
+}
+
+function clearError() {
+  errorMessage.textContent = '';
+  errorMessage.style.display = 'none';
+}
+
+function resetUI() {
+  currentDemoView = 'canvas';
+  demoViewSelect.value = 'canvas';
+  activeLoadedFile = null;
+  availableTemplates = new Set(VIRTUAL_FILE_DEFS.map((f) => f.template));
+  workbookState = null;
+  currentRows = [];
+  currentHeaders = [];
+  currentNumericCols = [];
+  currentFilteredRows = [];
+  sheetSelect.innerHTML = '';
+  xColumnSelect.innerHTML = '';
+  y1ColumnSelect.innerHTML = '';
+  y2ColumnSelect.innerHTML = '';
+  searchInput.value = '';
+  tableCaption.textContent = 'Awaiting data';
+  tableWrap.innerHTML = '<div class="empty">No workbook loaded.</div>';
+  fieldList.innerHTML = '<div class="empty">Field profile appears after loading a workbook.</div>';
+  dropSlot.className = 'drop-slot empty-slot';
+  dropSlot.textContent = 'Drop target: no virtual file moved yet.';
+  renderVirtualFileManager();
+  document.body.classList.remove('is-dragging-file');
+  Plotly.purge(chartPrimaryId);
+  Plotly.purge(chartSecondaryId);
+  Plotly.purge(chartTertiaryId);
+
+  statWorkbook.textContent = '-';
+  statSheets.textContent = '-';
+  statRows.textContent = '-';
+  statColumns.textContent = '-';
+  statNumeric.textContent = '-';
+  insightAvg.textContent = '-';
+  insightMax.textContent = '-';
+  insightUnique.textContent = '-';
+  insightFilter.textContent = '-';
+  clearError();
+}
+
+function makeWorkbookBlob(templateName) {
+  const sheets = templates[templateName] ? templates[templateName]() : null;
+  if (!sheets) throw new Error('Unknown virtual template.');
+
+  const wb = XLSX.utils.book_new();
+  Object.keys(sheets).forEach((sheetName) => {
+    const ws = XLSX.utils.json_to_sheet(sheets[sheetName]);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  const data = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  return new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+function parseWorkbook(buffer, displayName) {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  workbookState = { name: displayName, wb };
+
+  statWorkbook.textContent = displayName;
+  statSheets.textContent = String(wb.SheetNames.length);
+
+  sheetSelect.innerHTML = '';
+  wb.SheetNames.forEach((sheetName) => {
+    const opt = document.createElement('option');
+    opt.value = sheetName;
+    opt.textContent = sheetName;
+    sheetSelect.appendChild(opt);
+  });
+
+  renderSheet(wb.SheetNames[0]);
+}
+
+function renderSheet(sheetName) {
+  if (!workbookState) return;
+
+  const ws = workbookState.wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  currentRows = rows.slice(0, MAX_ROWS);
+  currentFilteredRows = [...currentRows];
+  currentHeaders = Object.keys(currentRows[0] || {});
+
+  statRows.textContent = String(currentRows.length);
+  statColumns.textContent = String(currentHeaders.length);
+
+  currentNumericCols = getNumericColumns(currentRows, currentHeaders);
+  statNumeric.textContent = String(currentNumericCols.length);
+  tableCaption.textContent = `${sheetName} · ${currentRows.length} rows shown`;
+  populateColumnControls(currentHeaders, currentNumericCols);
+
+  renderActiveExperience(currentRows, currentHeaders, currentNumericCols);
+}
+
+function isIndividualDataset(headers) {
+  const needed = ['agent', 'efficiency', 'quality', 'throughput', 'collaboration', 'initiative', 'accuracyPct', 'cycleTimeHours', 'volume'];
+  return needed.every((k) => headers.includes(k));
+}
+
+function renderActiveExperience(rows, headers, numericCols) {
+  if (currentDemoView === 'individual' && isIndividualDataset(headers)) {
+    renderIndividualPerformance(rows, headers);
+    return;
+  }
+
+  renderFieldProfile(rows, numericCols);
+  renderTable(rows, headers);
+  updateInsights(rows, headers, numericCols);
+  renderCharts(rows, headers, numericCols);
+}
+
+function renderIndividualPerformance(rows, headers) {
+  const ranked = [...rows].map((row) => {
+    const composite = Number((((Number(row.efficiency) || 0) + (Number(row.quality) || 0) + (Number(row.throughput) || 0) + (Number(row.collaboration) || 0) + (Number(row.initiative) || 0)) / 5).toFixed(2));
+    return { ...row, composite };
+  }).sort((a, b) => b.composite - a.composite);
+
+  if (!ranked.length) {
+    fieldList.innerHTML = '<div class="empty">No rows available for individual performance.</div>';
+    renderTable(rows, headers);
+    updateInsights(rows, headers, currentNumericCols);
+    renderCharts(rows, headers, currentNumericCols);
+    return;
+  }
+
+  const leader = ranked[0];
+  const avgComposite = ranked.reduce((s, r) => s + r.composite, 0) / ranked.length;
+  const maxAccuracy = Math.max(...ranked.map((r) => Number(r.accuracyPct) || 0));
+  const fastestCycle = Math.min(...ranked.map((r) => Number(r.cycleTimeHours) || 0));
+  const uniqueRegions = new Set(ranked.map((r) => String(r.region || ''))).size;
+
+  insightAvg.textContent = avgComposite.toFixed(2);
+  insightMax.textContent = maxAccuracy.toFixed(1) + '%';
+  insightUnique.textContent = String(uniqueRegions);
+  insightFilter.textContent = String(ranked.length);
+
+  let profileHtml = '<div class="field">';
+  profileHtml += `<div class="field-title">Top Performer: ${escapeHtml(leader.agent || 'N/A')}</div>`;
+  profileHtml += `<div class="field-meta"><div>composite: ${leader.composite.toFixed(2)}</div><div>accuracy: ${(Number(leader.accuracyPct) || 0).toFixed(1)}%</div><div>cycle: ${(Number(leader.cycleTimeHours) || 0).toFixed(2)}h</div></div>`;
+  profileHtml += '</div>';
+  profileHtml += '<div class="field">';
+  profileHtml += '<div class="field-title">Team Signals</div>';
+  profileHtml += `<div class="field-meta"><div>avg composite: ${avgComposite.toFixed(2)}</div><div>top accuracy: ${maxAccuracy.toFixed(1)}%</div><div>best cycle: ${fastestCycle.toFixed(2)}h</div></div>`;
+  profileHtml += '</div>';
+  fieldList.innerHTML = profileHtml;
+
+  renderTable(ranked, [...headers, 'composite']);
+  tableCaption.textContent = `Individuals · ${ranked.length} rows shown`;
+
+  const names = ranked.map((r) => String(r.agent || 'Unknown')).reverse();
+  const composites = ranked.map((r) => r.composite).reverse();
+  const volumes = ranked.map((r) => Number(r.volume) || 0).reverse();
+
+  Plotly.newPlot(chartPrimaryId, [
+    {
+      type: 'bar',
+      orientation: 'h',
+      y: names,
+      x: composites,
+      marker: {
+        color: composites,
+        colorscale: [[0, '#00b894'], [1, '#53a7ff']]
+      },
+      text: composites.map((v) => v.toFixed(2)),
+      textposition: 'outside',
+      hovertemplate: '<b>%{y}</b><br>Composite: %{x:.2f}<extra></extra>'
+    }
+  ], {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    title: { text: 'Individual Composite Ranking', font: { size: 13, color: '#b8ccf6' } },
+    margin: { l: 110, r: 24, t: 42, b: 38 },
+    font: { family: 'Manrope, sans-serif', color: '#d8e5ff' },
+    xaxis: { gridcolor: 'rgba(140, 168, 220, 0.17)' },
+    yaxis: { automargin: true }
+  }, { displayModeBar: false, responsive: true });
+
+  Plotly.newPlot(chartSecondaryId, [
+    {
+      type: 'scatter',
+      mode: 'markers',
+      x: ranked.map((r) => Number(r.volume) || 0),
+      y: ranked.map((r) => Number(r.accuracyPct) || 0),
+      text: ranked.map((r) => String(r.agent || 'Unknown')),
+      marker: {
+        size: ranked.map((r) => Math.max(10, (Number(r.throughput) || 0) / 4)),
+        color: ranked.map((r) => Number(r.cycleTimeHours) || 0),
+        colorscale: 'Portland',
+        showscale: true,
+        colorbar: { title: 'Cycle h', tickfont: { color: '#b8ccf6' }, titlefont: { color: '#b8ccf6' } },
+        opacity: 0.85,
+        line: { color: '#dce8ff', width: 1 }
+      },
+      hovertemplate: '<b>%{text}</b><br>Volume: %{x}<br>Accuracy: %{y:.1f}%<extra></extra>'
+    }
+  ], {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    title: { text: 'Volume vs Accuracy (Bubble = Throughput)', font: { size: 13, color: '#b8ccf6' } },
+    margin: { l: 52, r: 26, t: 42, b: 45 },
+    font: { family: 'Manrope, sans-serif', color: '#d8e5ff' },
+    xaxis: { title: 'Volume', gridcolor: 'rgba(140, 168, 220, 0.17)' },
+    yaxis: { title: 'Accuracy %', gridcolor: 'rgba(140, 168, 220, 0.17)' }
+  }, { displayModeBar: false, responsive: true });
+
+  Plotly.newPlot(chartTertiaryId, [
+    {
+      type: 'scatterpolar',
+      r: [Number(leader.efficiency) || 0, Number(leader.quality) || 0, Number(leader.throughput) || 0, Number(leader.collaboration) || 0, Number(leader.initiative) || 0],
+      theta: ['Efficiency', 'Quality', 'Throughput', 'Collaboration', 'Initiative'],
+      fill: 'toself',
+      name: String(leader.agent || 'Leader'),
+      line: { color: '#00b894', width: 2.6 },
+      fillcolor: 'rgba(0,184,148,0.25)'
+    }
+  ], {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    title: { text: `Capability Radar · ${escapeHtml(String(leader.agent || 'Leader'))}`, font: { size: 13, color: '#b8ccf6' } },
+    margin: { l: 28, r: 28, t: 48, b: 22 },
+    font: { family: 'Manrope, sans-serif', color: '#d8e5ff' },
+    polar: {
+      bgcolor: 'rgba(10,17,31,0.35)',
+      radialaxis: { visible: true, range: [0, 100], gridcolor: 'rgba(140, 168, 220, 0.2)', tickfont: { color: '#b8ccf6' } },
+      angularaxis: { gridcolor: 'rgba(140, 168, 220, 0.2)', tickfont: { color: '#b8ccf6' } }
+    },
+    showlegend: false
+  }, { displayModeBar: false, responsive: true });
+}
+
+function populateColumnControls(headers, numericCols) {
+  xColumnSelect.innerHTML = '';
+  y1ColumnSelect.innerHTML = '';
+  y2ColumnSelect.innerHTML = '';
+
+  headers.forEach((h) => {
+    const o = document.createElement('option');
+    o.value = h;
+    o.textContent = h;
+    xColumnSelect.appendChild(o);
+  });
+
+  numericCols.forEach((h) => {
+    const y1 = document.createElement('option');
+    y1.value = h;
+    y1.textContent = h;
+    y1ColumnSelect.appendChild(y1);
+
+    const y2 = document.createElement('option');
+    y2.value = h;
+    y2.textContent = h;
+    y2ColumnSelect.appendChild(y2);
+  });
+
+  if (headers.length) {
+    const preferredX = headers.find((h) => !numericCols.includes(h)) || headers[0];
+    xColumnSelect.value = preferredX;
+  }
+
+  if (numericCols.length) {
+    y1ColumnSelect.value = numericCols[0];
+    y2ColumnSelect.value = numericCols[1] || numericCols[0];
+  }
+}
+
+function updateInsights(rows, headers, numericCols) {
+  if (!rows.length || !numericCols.length) {
+    insightAvg.textContent = '-';
+    insightMax.textContent = '-';
+    insightUnique.textContent = '-';
+    insightFilter.textContent = String(rows.length);
+    return;
+  }
+
+  const primary = numericCols[0];
+  const primaryVals = rows.map((r) => Number(r[primary])).filter((v) => Number.isFinite(v));
+  const avg = primaryVals.reduce((a, b) => a + b, 0) / (primaryVals.length || 1);
+  const mx = primaryVals.length ? Math.max(...primaryVals) : 0;
+
+  const cat = headers.find((h) => !numericCols.includes(h));
+  const uniq = cat ? new Set(rows.map((r) => String(r[cat] || ''))).size : 0;
+
+  insightAvg.textContent = avg.toFixed(2);
+  insightMax.textContent = mx.toFixed(2);
+  insightUnique.textContent = String(uniq || '-');
+  insightFilter.textContent = String(rows.length);
+}
+
+function getNumericColumns(rows, headers) {
+  return headers.filter((header) => rows.some((row) => Number.isFinite(Number(row[header]))));
+}
+
+function renderFieldProfile(rows, numericCols) {
+  if (!numericCols.length) {
+    fieldList.innerHTML = '<div class="empty">No numeric fields detected in this sheet.</div>';
+    return;
+  }
+
+  let html = '';
+  numericCols.slice(0, 14).forEach((col) => {
+    const values = rows.map((r) => Number(r[col])).filter((v) => Number.isFinite(v));
+    if (!values.length) return;
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+    html += '<div class="field">';
+    html += `<div class="field-title">${escapeHtml(col)}</div>`;
+    html += '<div class="field-meta">';
+    html += `<div>min: ${min.toFixed(2)}</div>`;
+    html += `<div>avg: ${avg.toFixed(2)}</div>`;
+    html += `<div>max: ${max.toFixed(2)}</div>`;
+    html += '</div></div>';
+  });
+
+  fieldList.innerHTML = html || '<div class="empty">No numeric field profile available.</div>';
+}
+
+function renderTable(rows, headers) {
+  if (!headers.length) {
+    tableWrap.innerHTML = '<div class="empty">No tabular rows found in this sheet.</div>';
+    return;
+  }
+
+  let html = '<table><thead><tr>';
+  headers.forEach((header) => { html += `<th>${escapeHtml(header)}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  rows.forEach((row) => {
+    html += '<tr>';
+    headers.forEach((header) => {
+      html += `<td>${escapeHtml(row[header])}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+}
+
+function renderCharts(rows, headers, numericCols) {
+  const cfg = { displayModeBar: false, responsive: true };
+  const layoutBase = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Manrope, sans-serif', color: '#d8e5ff' },
+    margin: { l: 50, r: 16, t: 28, b: 56 },
+    xaxis: { gridcolor: 'rgba(140, 168, 220, 0.17)' },
+    yaxis: { gridcolor: 'rgba(140, 168, 220, 0.17)', zeroline: false }
+  };
+
+  if (!rows.length || !headers.length || !numericCols.length) {
+    Plotly.newPlot(chartPrimaryId, [], {
+      ...layoutBase,
+      annotations: [{ text: 'Load data with numeric fields for charts.', showarrow: false, font: { color: '#a6bbdf' } }],
+      xaxis: { visible: false },
+      yaxis: { visible: false }
+    }, cfg);
+
+    Plotly.newPlot(chartSecondaryId, [], {
+      ...layoutBase,
+      annotations: [{ text: 'Secondary chart preview unavailable.', showarrow: false, font: { color: '#a6bbdf' } }],
+      xaxis: { visible: false },
+      yaxis: { visible: false }
+    }, cfg);
+
+    Plotly.newPlot(chartTertiaryId, [], {
+      ...layoutBase,
+      annotations: [{ text: 'Load data to enable tertiary chart.', showarrow: false, font: { color: '#a6bbdf' } }],
+      xaxis: { visible: false },
+      yaxis: { visible: false }
+    }, cfg);
+    return;
+  }
+
+  const category = xColumnSelect.value || headers.find((h) => !numericCols.includes(h)) || headers[0];
+  const points = rows.slice(0, 20);
+  const labels = points.map((row, idx) => shortLabel(String(row[category] || `Row ${idx + 1}`)));
+
+  const primaryCol = y1ColumnSelect.value || numericCols[0];
+  const secondaryCol = y2ColumnSelect.value || numericCols[1] || numericCols[0];
+  const tertiaryCol = numericCols[2] || numericCols[0];
+  const modeA = chartAType.value;
+  const modeB = chartBType.value;
+
+  const primaryTrace = buildTrace(modeA, primaryCol, labels, points, '#53a7ff');
+  const secondaryTrace = buildTrace(modeA, secondaryCol, labels, points, '#ffb86b');
+
+  Plotly.newPlot(chartPrimaryId, [primaryTrace, secondaryTrace], {
+    ...layoutBase,
+    barmode: modeA === 'bar' ? 'group' : 'overlay',
+    hovermode: 'x unified',
+    title: { text: 'Comparative View', font: { size: 13, color: '#b8ccf6' } },
+    xaxis: { ...layoutBase.xaxis, tickangle: -20, tickfont: { size: 10 }, automargin: true, nticks: 8 },
+    yaxis: { ...layoutBase.yaxis, tickfont: { size: 10 }, automargin: true },
+    legend: { orientation: 'h', y: 1.14, x: 0 }
+  }, cfg);
+
+  const trendTrace = buildTrace(modeB, tertiaryCol, labels, points, '#00b894');
+
+  const rolling = rollingAvg(points.map((r) => Number(r[tertiaryCol]) || 0), 5);
+  const smoothTrace = {
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Rolling Avg',
+    x: labels,
+    y: rolling,
+    line: { color: '#ff7f88', width: 2, dash: 'dot' }
+  };
+
+  Plotly.newPlot(chartSecondaryId, [trendTrace, smoothTrace], {
+    ...layoutBase,
+    hovermode: 'x unified',
+    title: { text: 'Trend View', font: { size: 13, color: '#b8ccf6' } },
+    xaxis: { ...layoutBase.xaxis, tickangle: -20, tickfont: { size: 10 }, automargin: true, nticks: 8 },
+    yaxis: { ...layoutBase.yaxis, tickfont: { size: 10 }, automargin: true },
+    legend: { orientation: 'h', y: 1.14, x: 0 }
+  }, cfg);
+
+  const compositionField = getCompositionField(headers, numericCols, rows);
+  const byCategory = summarizeByCategory(points, compositionField, primaryCol);
+  Plotly.newPlot(chartTertiaryId, [
+    {
+      type: 'pie',
+      labels: byCategory.labels,
+      values: byCategory.values,
+      hole: 0.58,
+      marker: { colors: ['#53a7ff', '#ffb86b', '#00b894', '#ff7f88', '#87a7ff', '#9fdcf4'] },
+      textinfo: 'label+percent',
+      textposition: 'outside',
+      automargin: true
+    }
+  ], {
+    ...layoutBase,
+    title: { text: 'Category Composition', font: { size: 13, color: '#b8ccf6' } },
+    margin: { l: 18, r: 18, t: 40, b: 18 },
+    showlegend: true,
+    legend: { orientation: 'h', y: -0.04, x: 0.02, font: { size: 10, color: '#b8ccf6' } }
+  }, cfg);
+}
+
+function shortLabel(value) {
+  const s = String(value);
+  return s.length > 12 ? s.slice(0, 10) + '..' : s;
+}
+
+function getCompositionField(headers, numericCols, rows) {
+  const candidates = headers.filter((h) => !numericCols.includes(h));
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    const uniq = new Set(rows.map((r) => String(r[c] || ''))).size;
+    if (uniq > 1 && uniq <= 8 && !/^\d{4}-\d{2}-\d{2}/.test(String(rows[0]?.[c] || ''))) {
+      return c;
+    }
+  }
+  return candidates[0] || headers[0];
+}
+
+function buildTrace(type, field, labels, points, color) {
+  const values = points.map((r) => Number(r[field]) || 0);
+
+  if (type === 'line') {
+    return { type: 'scatter', mode: 'lines+markers', name: field, x: labels, y: values, line: { color, width: 2.5 }, marker: { color, size: 5 } };
+  }
+  if (type === 'area') {
+    return { type: 'scatter', mode: 'lines', name: field, x: labels, y: values, fill: 'tozeroy', line: { color, width: 2 } };
+  }
+  if (type === 'scatter') {
+    return { type: 'scatter', mode: 'markers', name: field, x: labels, y: values, marker: { color, size: 8 } };
+  }
+  if (type === 'box') {
+    return { type: 'box', name: field, y: values, marker: { color }, boxmean: true };
+  }
+  if (type === 'histogram') {
+    return { type: 'histogram', name: field, x: values, marker: { color, opacity: 0.85 } };
+  }
+
+  return { type: 'bar', name: field, x: labels, y: values, marker: { color } };
+}
+
+function summarizeByCategory(points, categoryField, valueField) {
+  const bucket = new Map();
+  points.forEach((row) => {
+    const key = String(row[categoryField] || 'Unspecified');
+    const current = bucket.get(key) || 0;
+    bucket.set(key, current + (Number(row[valueField]) || 0));
+  });
+
+  const sorted = [...bucket.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return {
+    labels: sorted.map((x) => x[0]),
+    values: sorted.map((x) => x[1])
+  };
+}
+
+function rollingAvg(values, span) {
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const start = Math.max(0, i - span + 1);
+    const chunk = values.slice(start, i + 1);
+    const avg = chunk.reduce((a, b) => a + b, 0) / chunk.length;
+    out.push(Number(avg.toFixed(3)));
+  }
+  return out;
+}
+
+function filterRows(query) {
+  if (!currentRows.length || !currentHeaders.length) return;
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) {
+    currentFilteredRows = [...currentRows];
+    renderActiveExperience(currentRows, currentHeaders, currentNumericCols);
+    if (!(currentDemoView === 'individual' && isIndividualDataset(currentHeaders))) {
+      tableCaption.textContent = `${sheetSelect.value} · ${currentRows.length} rows shown`;
+    }
+    return;
+  }
+
+  const filtered = currentRows.filter((row) => {
+    return currentHeaders.some((h) => String(row[h]).toLowerCase().includes(q));
+  });
+  currentFilteredRows = filtered;
+  renderActiveExperience(filtered, currentHeaders, currentNumericCols);
+  if (!(currentDemoView === 'individual' && isIndividualDataset(currentHeaders))) {
+    tableCaption.textContent = `${sheetSelect.value} · ${filtered.length} rows matched`;
+  }
+}
+
+function exportVisibleCsv() {
+  if (!currentFilteredRows.length && !currentRows.length) {
+    showError('Load data before exporting CSV.');
+    return;
+  }
+  const rows = currentFilteredRows.length ? currentFilteredRows : currentRows;
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'visible_rows_snapshot.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportChartImage() {
+  const chart = document.getElementById(chartPrimaryId);
+  if (!chart || !chart.data || !chart.data.length) {
+    showError('Load data before exporting chart image.');
+    return;
+  }
+  Plotly.downloadImage(chart, { format: 'png', filename: 'chart_snapshot', width: 1280, height: 720 });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function readLocalFile(file) {
+  clearError();
+  if (activeLoadedFile) {
+    showError('Only one file can be loaded at a time. Reset canvas before loading another.');
+    return;
+  }
+  if (!/\.(xlsx|xlsm)$/i.test(file.name)) {
+    showError('Please upload a file with .xlsx or .xlsm extension.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      parseWorkbook(event.target.result, file.name);
+      activeLoadedFile = file.name;
+      dropSlot.className = 'drop-slot';
+      dropSlot.innerHTML = `<div class="slot-file"><span class="slot-file-name">${escapeHtml(file.name)}</span><span class="slot-file-meta">Local file</span></div>`;
+      pulseDropZone();
+    } catch (err) {
+      showError(`Could not parse workbook: ${err.message}`);
+    }
+  };
+  reader.onerror = () => showError('Failed reading the selected file.');
+  reader.readAsArrayBuffer(file);
+}
+
+function loadVirtualTemplate(templateName) {
+  try {
+    clearError();
+    if (activeLoadedFile) {
+      showError('Only one file can be loaded at a time. Reset canvas before loading another.');
+      return;
+    }
+    if (!availableTemplates.has(templateName)) {
+      showError('This virtual file is not available. Reset canvas to restore it.');
+      return;
+    }
+    if (templateName === 'individual') {
+      currentDemoView = 'individual';
+      demoViewSelect.value = 'individual';
+    }
+    const blob = makeWorkbookBlob(templateName);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      parseWorkbook(event.target.result, `virtual_${templateName}.xlsx`);
+      moveVirtualFileToCanvas(templateName);
+      pulseDropZone();
+    };
+    reader.readAsArrayBuffer(blob);
+  } catch (err) {
+    showError(`Could not generate virtual workbook: ${err.message}`);
+  }
+}
+
+function moveVirtualFileToCanvas(templateName) {
+  const def = VIRTUAL_FILE_DEFS.find((f) => f.template === templateName);
+  const name = def ? def.name : `virtual_${templateName}.xlsx`;
+  const meta = def ? def.meta : 'Virtual file';
+
+  availableTemplates.delete(templateName);
+  activeLoadedFile = name;
+  renderVirtualFileManager();
+  dropSlot.className = 'drop-slot';
+  dropSlot.innerHTML = `<div class="slot-file"><span class="slot-file-name">${escapeHtml(name)}</span><span class="slot-file-meta">${escapeHtml(meta)}</span></div>`;
+}
+
+function pulseDropZone() {
+  dropZone.classList.add('flash');
+  setTimeout(() => dropZone.classList.remove('flash'), 500);
+}
+
+browseBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (file) readLocalFile(file);
+});
+
+resetBtn.addEventListener('click', () => {
+  fileInput.value = '';
+  resetUI();
+});
+
+sheetSelect.addEventListener('change', (event) => renderSheet(event.target.value));
+searchInput.addEventListener('input', (event) => filterRows(event.target.value));
+[xColumnSelect, y1ColumnSelect, y2ColumnSelect, chartAType, chartBType].forEach((el) => {
+  el.addEventListener('change', () => {
+    if (currentDemoView === 'individual' && isIndividualDataset(currentHeaders)) return;
+    const rows = currentFilteredRows.length ? currentFilteredRows : currentRows;
+    renderCharts(rows, currentHeaders, currentNumericCols);
+  });
+});
+
+demoViewSelect.addEventListener('change', (event) => {
+  currentDemoView = event.target.value;
+  const rows = currentFilteredRows.length ? currentFilteredRows : currentRows;
+  renderActiveExperience(rows, currentHeaders, currentNumericCols);
+});
+
+exportCsvBtn.addEventListener('click', exportVisibleCsv);
+exportChartBtn.addEventListener('click', exportChartImage);
+
+['dragenter', 'dragover'].forEach((name) => {
+  dropZone.addEventListener(name, (event) => {
+    event.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+});
+
+['dragleave', 'drop'].forEach((name) => {
+  dropZone.addEventListener(name, (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('drag-over');
+  });
+});
+
+dropZone.addEventListener('drop', (event) => {
+  const template = event.dataTransfer.getData('text/plain');
+  if (template && templates[template]) {
+    dragCommitted = true;
+    loadVirtualTemplate(template);
+    return;
+  }
+
+  const files = event.dataTransfer.files;
+  if (files && files.length) {
+    readLocalFile(files[0]);
+  }
+});
+
+document.addEventListener('drop', () => {
+  document.body.classList.remove('is-dragging-file');
+});
+
+window.addEventListener('resize', () => {
+  [chartPrimaryId, chartSecondaryId, chartTertiaryId].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.data) Plotly.Plots.resize(el);
+  });
+});
+
+resetUI();
+</script>
+</body>
+</html>

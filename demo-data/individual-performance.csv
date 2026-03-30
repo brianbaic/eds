@@ -1,0 +1,9 @@
+agent,role,region,efficiency,quality,throughput,collaboration,initiative,cycleTimeHours,accuracyPct,volume,trendW1,trendW2,trendW3,trendW4,trendW5,trendW6
+Alex Carter,Specialist,North,88,91,84,79,86,2.3,96.2,142,72,76,79,81,84,88
+Jordan Lee,Specialist,East,82,87,92,83,77,2.1,94.8,156,68,72,77,83,87,92
+Morgan Shaw,Lead,South,91,94,80,93,89,2.8,97.1,131,80,82,84,86,88,90
+Riley Gomez,Specialist,West,76,83,88,74,79,3.1,92.7,149,63,68,73,79,84,88
+Taylor Nguyen,Lead,North,89,90,86,88,91,2.4,95.9,144,74,79,82,85,87,89
+Casey Patel,Coordinator,East,84,88,78,90,85,2.6,95.4,126,70,73,75,77,80,84
+Jamie Brooks,Coordinator,South,79,85,82,87,81,2.9,93.6,133,65,69,72,76,78,81
+Avery Chen,Specialist,West,93,95,90,84,92,2.0,97.8,165,79,83,86,89,91,93
